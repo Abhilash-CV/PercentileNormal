@@ -16,9 +16,9 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file:
 
-    # =========================================
+    # ==================================================
     # LOAD EXCEL
-    # =========================================
+    # ==================================================
     df = pd.read_excel(uploaded_file)
 
     # Clean column names
@@ -27,11 +27,11 @@ if uploaded_file:
         for c in df.columns
     ]
 
-    # =========================================
+    # ==================================================
     # REQUIRED COLUMNS
-    # =========================================
+    # ==================================================
     required_cols = [
-        "Roll_No",
+        "RollNo",
         "MatheMatics",
         "Physics",
         "Chemistry",
@@ -41,74 +41,110 @@ if uploaded_file:
     for col in required_cols:
 
         if col not in df.columns:
+
             st.error(f"Missing column: {col}")
             st.stop()
 
-    # =========================================
-    # RAW SCORE (OUT OF 600)
-    # =========================================
+    # ==================================================
+    # CALCULATE RAW SCORE
+    # ==================================================
+    # Total raw mark out of 600
     df["Raw_Total"] = (
         df["MatheMatics"] +
         df["Physics"] +
         df["Chemistry"]
     )
 
-    # Convert to scale of 300
-    df["Score"] = df["Raw_Total"] / 2
+    # Convert to 300 scale
+    df["Score"] = (
+        df["Raw_Total"] / 2
+    )
 
-    # =========================================
-    # PERCENTILE CALCULATION
-    # =========================================
+    # ==================================================
+    # EXACT KEAM PERCENTILE
+    # ==================================================
     percentile_frames = []
 
     for batch in df["Batch"].unique():
 
-        temp = df[df["Batch"] == batch].copy()
+        temp = df[
+            df["Batch"] == batch
+        ].copy()
 
-        # Percentile rank
+        scores = temp[
+            "Score"
+        ].to_numpy()
+
+        n = len(scores)
+
+        percentiles = []
+
+        # Exact KEAM formula
+        for s in scores:
+
+            count = np.sum(
+                scores <= s
+            )
+
+            p = (
+                count / n
+            ) * 100
+
+            percentiles.append(p)
+
         temp["Percentile"] = (
-            temp["Score"]
-            .rank(method="max", pct=True)
-            * 100
+            percentiles
         )
 
         percentile_frames.append(temp)
 
-    df = pd.concat(percentile_frames)
+    df = pd.concat(
+        percentile_frames
+    )
 
-    # =========================================
+    # ==================================================
     # SORT
-    # =========================================
+    # ==================================================
     df = df.sort_values(
         ["Batch", "Percentile"]
     ).reset_index(drop=True)
 
-    batches = sorted(df["Batch"].unique())
+    batches = sorted(
+        df["Batch"].unique()
+    )
 
-    # =========================================
+    # ==================================================
     # PREPROCESS BATCHES
-    # =========================================
+    # ==================================================
     batch_lookup = {}
 
     for batch in batches:
 
         temp = (
-            df[df["Batch"] == batch]
-            .sort_values("Percentile")
+            df[
+                df["Batch"] == batch
+            ]
+            .sort_values(
+                "Percentile"
+            )
         )
 
         batch_lookup[batch] = {
 
             "percentiles":
-                temp["Percentile"].to_numpy(),
+                temp[
+                    "Percentile"
+                ].to_numpy(),
 
             "scores":
-                temp["Score"].to_numpy()
+                temp[
+                    "Score"
+                ].to_numpy()
         }
 
-    # =========================================
-    # INTERPOLATION FUNCTION
-    # =========================================
+    # ==================================================
+    # INTERPOLATION
+    # ==================================================
     def interpolate_score(
         target_percentile,
         p_arr,
@@ -122,11 +158,17 @@ if uploaded_file:
 
         # Lower than minimum
         if idx == 0:
-            return float(s_arr[0])
+
+            return float(
+                s_arr[0]
+            )
 
         # Greater than maximum
         if idx >= len(p_arr):
-            return float(s_arr[-1])
+
+            return float(
+                s_arr[-1]
+            )
 
         p1 = p_arr[idx - 1]
         p2 = p_arr[idx]
@@ -136,31 +178,44 @@ if uploaded_file:
 
         # Exact matches
         if p1 == target_percentile:
+
             return float(s1)
 
         if p2 == target_percentile:
+
             return float(s2)
 
         # Linear interpolation
-        interpolated = s1 + (
+        interpolated = (
+            s1 +
             (
-                target_percentile - p1
-            ) / (
-                p2 - p1
+                (
+                    target_percentile - p1
+                )
+                /
+                (
+                    p2 - p1
+                )
             )
-        ) * (
-            s2 - s1
+            *
+            (
+                s2 - s1
+            )
         )
 
-        return float(interpolated)
+        return float(
+            interpolated
+        )
 
-    # =========================================
+    # ==================================================
     # NORMALIZATION
-    # =========================================
+    # ==================================================
     output = []
 
     rows = list(
-        df.itertuples(index=False)
+        df.itertuples(
+            index=False
+        )
     )
 
     total_rows = len(rows)
@@ -169,27 +224,40 @@ if uploaded_file:
 
     for i, row in enumerate(rows):
 
-        percentile = row.Percentile
-        current_batch = row.Batch
+        percentile = (
+            row.Percentile
+        )
+
+        current_batch = (
+            row.Batch
+        )
 
         scores = []
 
         row_data = {
 
             "RollNo":
-                row.Roll_No,
+                row.RollNo,
 
             "Batch":
                 current_batch,
 
             "Percentile":
-                round(percentile, 8),
+                round(
+                    percentile,
+                    8
+                ),
 
             "Score":
-                round(row.Score, 8)
+                round(
+                    row.Score,
+                    8
+                )
         }
 
-        scores.append(row.Score)
+        scores.append(
+            row.Score
+        )
 
         score_index = 2
 
@@ -198,13 +266,23 @@ if uploaded_file:
             if batch == current_batch:
                 continue
 
-            interp_score = interpolate_score(
+            interp_score = (
+                interpolate_score(
 
-                percentile,
+                    percentile,
 
-                batch_lookup[batch]["percentiles"],
+                    batch_lookup[
+                        batch
+                    ][
+                        "percentiles"
+                    ],
 
-                batch_lookup[batch]["scores"]
+                    batch_lookup[
+                        batch
+                    ][
+                        "scores"
+                    ]
+                )
             )
 
             row_data[
@@ -214,29 +292,37 @@ if uploaded_file:
                 8
             )
 
-            scores.append(interp_score)
+            scores.append(
+                interp_score
+            )
 
             score_index += 1
 
         # Final normalized score
-        row_data["Norm_Score"] = round(
+        row_data[
+            "Norm_Score"
+        ] = round(
             np.mean(scores),
             4
         )
 
-        output.append(row_data)
+        output.append(
+            row_data
+        )
 
-        # Progress update
+        # Progress bar
         if i % 1000 == 0:
 
             progress.progress(
                 i / total_rows
             )
 
-    # =========================================
-    # FINAL DATAFRAME
-    # =========================================
-    out_df = pd.DataFrame(output)
+    # ==================================================
+    # FINAL OUTPUT
+    # ==================================================
+    out_df = pd.DataFrame(
+        output
+    )
 
     fixed_cols = [
         "RollNo",
@@ -246,13 +332,20 @@ if uploaded_file:
     ]
 
     score_cols = sorted(
+
         [
-            c for c in out_df.columns
+            c
+            for c in out_df.columns
+
             if c.startswith("Score")
             and c != "Score"
         ],
+
         key=lambda x: int(
-            x.replace("Score", "")
+            x.replace(
+                "Score",
+                ""
+            )
         )
     )
 
@@ -262,11 +355,13 @@ if uploaded_file:
         ["Norm_Score"]
     )
 
-    out_df = out_df[final_cols]
+    out_df = out_df[
+        final_cols
+    ]
 
-    # =========================================
+    # ==================================================
     # DISPLAY
-    # =========================================
+    # ==================================================
     st.success(
         "Normalization Completed"
     )
@@ -276,9 +371,9 @@ if uploaded_file:
         use_container_width=True
     )
 
-    # =========================================
+    # ==================================================
     # EXPORT EXCEL
-    # =========================================
+    # ==================================================
     output_file = (
         "keam_normalized_output.xlsx"
     )
@@ -293,7 +388,10 @@ if uploaded_file:
             index=False
         )
 
-    with open(output_file, "rb") as f:
+    with open(
+        output_file,
+        "rb"
+    ) as f:
 
         st.download_button(
             label="Download Output Excel",
