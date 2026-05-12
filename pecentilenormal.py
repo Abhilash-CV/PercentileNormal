@@ -94,27 +94,12 @@ if uploaded_file:
         ].copy()
 
         # Stable sorting
-        temp = temp.sort_values(
-            ["Score", "Roll_No"],
-            kind="mergesort"
-        ).reset_index(drop=True)
-
         n = len(temp)
-
-        # Sequential rank position
-        temp["Rank_Pos"] = np.arange(
-            1,
-            n + 1
-        )
-
-        # Percentile
+        scores_arr = temp["Score"].to_numpy()
         temp["Percentile"] = np.round(
-            (
-                temp["Rank_Pos"] / n
-            ) * 100,
+            np.array([(scores_arr <= x).sum() for x in scores_arr]) / n * 100,
             8
         )
-
         percentile_frames.append(temp)
 
     df = pd.concat(
