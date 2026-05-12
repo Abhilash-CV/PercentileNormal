@@ -2,7 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-st.set_page_config(page_title="KEAM Full Normalization", layout="wide")
+st.set_page_config(
+    page_title="KEAM Full Normalization",
+    layout="wide"
+)
 
 st.title("KEAM 2026 Percentile + Normalization Calculator")
 
@@ -13,13 +16,22 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file:
 
-    # =========================
-    # LOAD DATA
-    # =========================
+    # =========================================
+    # LOAD EXCEL
+    # =========================================
     df = pd.read_excel(uploaded_file)
 
+    # Clean column names
+    df.columns = [
+        c.strip().replace(" ", "_")
+        for c in df.columns
+    ]
+
+    # =========================================
+    # REQUIRED COLUMNS
+    # =========================================
     required_cols = [
-        "Roll No",
+        "Roll_No",
         "MatheMatics",
         "Physics",
         "Chemistry",
@@ -27,14 +39,14 @@ if uploaded_file:
     ]
 
     for col in required_cols:
+
         if col not in df.columns:
             st.error(f"Missing column: {col}")
             st.stop()
 
-    # =========================
-    # CALCULATE RAW SCORE
-    # =========================
-    # Total raw score out of 600
+    # =========================================
+    # RAW SCORE (OUT OF 600)
+    # =========================================
     df["Raw_Total"] = (
         df["MatheMatics"] +
         df["Physics"] +
@@ -44,40 +56,38 @@ if uploaded_file:
     # Convert to scale of 300
     df["Score"] = df["Raw_Total"] / 2
 
-    # =========================
-    # CALCULATE PERCENTILE
-    # =========================
-    percentile_list = []
+    # =========================================
+    # PERCENTILE CALCULATION
+    # =========================================
+    percentile_frames = []
 
     for batch in df["Batch"].unique():
 
         temp = df[df["Batch"] == batch].copy()
 
-        n = len(temp)
-
-        # Rank method
+        # Percentile rank
         temp["Percentile"] = (
             temp["Score"]
             .rank(method="max", pct=True)
             * 100
         )
 
-        percentile_list.append(temp)
+        percentile_frames.append(temp)
 
-    df = pd.concat(percentile_list)
+    df = pd.concat(percentile_frames)
 
-    # =========================
+    # =========================================
     # SORT
-    # =========================
+    # =========================================
     df = df.sort_values(
         ["Batch", "Percentile"]
     ).reset_index(drop=True)
 
     batches = sorted(df["Batch"].unique())
 
-    # =========================
-    # PREPROCESS
-    # =========================
+    # =========================================
+    # PREPROCESS BATCHES
+    # =========================================
     batch_lookup = {}
 
     for batch in batches:
@@ -88,13 +98,17 @@ if uploaded_file:
         )
 
         batch_lookup[batch] = {
-            "percentiles": temp["Percentile"].to_numpy(),
-            "scores": temp["Score"].to_numpy()
+
+            "percentiles":
+                temp["Percentile"].to_numpy(),
+
+            "scores":
+                temp["Score"].to_numpy()
         }
 
-    # =========================
-    # FAST INTERPOLATION
-    # =========================
+    # =========================================
+    # INTERPOLATION FUNCTION
+    # =========================================
     def interpolate_score(
         target_percentile,
         p_arr,
@@ -120,7 +134,7 @@ if uploaded_file:
         s1 = s_arr[idx - 1]
         s2 = s_arr[idx]
 
-        # Exact match
+        # Exact matches
         if p1 == target_percentile:
             return float(s1)
 
@@ -128,20 +142,26 @@ if uploaded_file:
             return float(s2)
 
         # Linear interpolation
-        return float(
-            s1 +
+        interpolated = s1 + (
             (
-                (target_percentile - p1)
-                / (p2 - p1)
-            ) * (s2 - s1)
+                target_percentile - p1
+            ) / (
+                p2 - p1
+            )
+        ) * (
+            s2 - s1
         )
 
-    # =========================
+        return float(interpolated)
+
+    # =========================================
     # NORMALIZATION
-    # =========================
+    # =========================================
     output = []
 
-    rows = list(df.itertuples(index=False))
+    rows = list(
+        df.itertuples(index=False)
+    )
 
     total_rows = len(rows)
 
@@ -155,10 +175,18 @@ if uploaded_file:
         scores = []
 
         row_data = {
-            "RollNo": row._asdict()["Roll No"],
-            "Batch": current_batch,
-            "Percentile": round(percentile, 8),
-            "Score": round(row.Score, 8)
+
+            "RollNo":
+                row.Roll_No,
+
+            "Batch":
+                current_batch,
+
+            "Percentile":
+                round(percentile, 8),
+
+            "Score":
+                round(row.Score, 8)
         }
 
         scores.append(row.Score)
@@ -171,12 +199,17 @@ if uploaded_file:
                 continue
 
             interp_score = interpolate_score(
+
                 percentile,
+
                 batch_lookup[batch]["percentiles"],
+
                 batch_lookup[batch]["scores"]
             )
 
-            row_data[f"Score{score_index}"] = round(
+            row_data[
+                f"Score{score_index}"
+            ] = round(
                 interp_score,
                 8
             )
@@ -193,12 +226,16 @@ if uploaded_file:
 
         output.append(row_data)
 
+        # Progress update
         if i % 1000 == 0:
-            progress.progress(i / total_rows)
 
-    # =========================
-    # OUTPUT DATAFRAME
-    # =========================
+            progress.progress(
+                i / total_rows
+            )
+
+    # =========================================
+    # FINAL DATAFRAME
+    # =========================================
     out_df = pd.DataFrame(output)
 
     fixed_cols = [
@@ -227,17 +264,24 @@ if uploaded_file:
 
     out_df = out_df[final_cols]
 
-    st.success("Normalization Completed")
+    # =========================================
+    # DISPLAY
+    # =========================================
+    st.success(
+        "Normalization Completed"
+    )
 
     st.dataframe(
         out_df,
         use_container_width=True
     )
 
-    # =========================
+    # =========================================
     # EXPORT EXCEL
-    # =========================
-    output_file = "keam_normalized_output.xlsx"
+    # =========================================
+    output_file = (
+        "keam_normalized_output.xlsx"
+    )
 
     with pd.ExcelWriter(
         output_file,
