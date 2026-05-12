@@ -57,7 +57,7 @@ if uploaded_file:
 
     # Convert to 300 scale
     df["Score"] = (
-        df["Raw_Total"] / 2
+        df["Raw_Total"] / 2,8
     )
 
     # ==================================================
