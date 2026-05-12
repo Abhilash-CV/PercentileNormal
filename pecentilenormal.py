@@ -48,17 +48,16 @@ if uploaded_file:
     # ==================================================
     # CALCULATE RAW SCORE
     # ==================================================
-    # Total raw score out of 600
+    # Raw score out of 600
     df["Raw_Total"] = (
         df["MatheMatics"] +
         df["Physics"] +
         df["Chemistry"]
     )
 
-    # Convert to scale of 300
-    df["Score"] = np.round(
-        df["Raw_Total"] / 2,
-        8
+    # Convert to 300 scale
+    df["Score"] = (
+        df["Raw_Total"] / 2
     )
 
     # ==================================================
@@ -72,28 +71,38 @@ if uploaded_file:
             df["Batch"] == batch
         ].copy()
 
-        # Sort by score
-        temp = temp.sort_values(
-            "Score"
-        ).reset_index(drop=True)
-
-        n = len(temp)
-
-        # KEAM-style position ranking
-        temp["Rank_Pos"] = np.arange(
-            1,
-            n + 1
+        scores = (
+            temp["Score"]
+            .to_numpy(dtype=np.float64)
         )
 
-        # Percentile
-        temp["Percentile"] = np.round(
-            (
-                temp["Rank_Pos"] / n
-            ) * 100,
-            8
+        n = len(scores)
+
+        percentiles = []
+
+        # Official KEAM formula
+        for s in scores:
+
+            # tolerance handling
+            count = np.sum(
+                scores <= (s + 1e-9)
+            )
+
+            p = (
+                count / n
+            ) * 100
+
+            percentiles.append(
+                round(p, 8)
+            )
+
+        temp["Percentile"] = (
+            percentiles
         )
 
-        percentile_frames.append(temp)
+        percentile_frames.append(
+            temp
+        )
 
     df = pd.concat(
         percentile_frames
@@ -177,7 +186,7 @@ if uploaded_file:
         s1 = s_arr[idx - 1]
         s2 = s_arr[idx]
 
-        # Exact matches
+        # Exact match
         if abs(
             p1 - target_percentile
         ) < 1e-9:
