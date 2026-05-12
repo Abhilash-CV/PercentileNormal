@@ -55,9 +55,10 @@ if uploaded_file:
         df["Chemistry"]
     )
 
-    # Convert to 300 scale
-    df["Score"] = (
-        df["Raw_Total"] / 2
+    # Convert to scale of 300
+    df["Score"] = np.round(
+        df["Raw_Total"] / 2,
+        8
     )
 
     # ==================================================
@@ -71,32 +72,41 @@ if uploaded_file:
             df["Batch"] == batch
         ].copy()
 
-        scores = temp[
-            "Score"
-        ].to_numpy()
+        # IMPORTANT:
+        # round scores to avoid floating precision issues
+        scores = np.round(
+            temp["Score"].to_numpy(),
+            8
+        )
 
         n = len(scores)
 
         percentiles = []
 
-        # Official KEAM formula
+        # Official KEAM percentile formula
         for s in scores:
 
             count = np.sum(
-                scores <= s
+                np.round(scores, 8)
+                <=
+                round(s, 8)
             )
 
             p = (
                 count / n
             ) * 100
 
-            percentiles.append(p)
+            percentiles.append(
+                round(p, 8)
+            )
 
         temp["Percentile"] = (
             percentiles
         )
 
-        percentile_frames.append(temp)
+        percentile_frames.append(
+            temp
+        )
 
     df = pd.concat(
         percentile_frames
@@ -132,14 +142,20 @@ if uploaded_file:
         batch_lookup[batch] = {
 
             "percentiles":
-                temp[
-                    "Percentile"
-                ].to_numpy(),
+                np.round(
+                    temp[
+                        "Percentile"
+                    ].to_numpy(),
+                    8
+                ),
 
             "scores":
-                temp[
-                    "Score"
-                ].to_numpy()
+                np.round(
+                    temp[
+                        "Score"
+                    ].to_numpy(),
+                    8
+                )
         }
 
     # ==================================================
@@ -150,6 +166,11 @@ if uploaded_file:
         p_arr,
         s_arr
     ):
+
+        target_percentile = round(
+            target_percentile,
+            8
+        )
 
         idx = np.searchsorted(
             p_arr,
@@ -176,12 +197,12 @@ if uploaded_file:
         s1 = s_arr[idx - 1]
         s2 = s_arr[idx]
 
-        # Exact matches
-        if p1 == target_percentile:
+        # Exact match
+        if round(p1, 8) == target_percentile:
 
             return float(s1)
 
-        if p2 == target_percentile:
+        if round(p2, 8) == target_percentile:
 
             return float(s2)
 
@@ -204,7 +225,10 @@ if uploaded_file:
         )
 
         return float(
-            interpolated
+            round(
+                interpolated,
+                8
+            )
         )
 
     # ==================================================
@@ -224,8 +248,9 @@ if uploaded_file:
 
     for i, row in enumerate(rows):
 
-        percentile = (
-            row.Percentile
+        percentile = round(
+            row.Percentile,
+            8
         )
 
         current_batch = (
@@ -243,10 +268,7 @@ if uploaded_file:
                 current_batch,
 
             "Percentile":
-                round(
-                    percentile,
-                    8
-                ),
+                percentile,
 
             "Score":
                 round(
@@ -310,7 +332,7 @@ if uploaded_file:
             row_data
         )
 
-        # Progress bar
+        # Progress update
         if i % 1000 == 0:
 
             progress.progress(
