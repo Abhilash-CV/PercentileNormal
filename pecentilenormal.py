@@ -31,7 +31,7 @@ if uploaded_file:
     # REQUIRED COLUMNS
     # ==================================================
     required_cols = [
-        "RollNo",
+        "Roll_No",
         "MatheMatics",
         "Physics",
         "Chemistry",
@@ -48,7 +48,7 @@ if uploaded_file:
     # ==================================================
     # CALCULATE RAW SCORE
     # ==================================================
-    # Total raw mark out of 600
+    # Raw score out of 600
     df["Raw_Total"] = (
         df["MatheMatics"] +
         df["Physics"] +
@@ -79,7 +79,7 @@ if uploaded_file:
 
         percentiles = []
 
-        # Exact KEAM formula
+        # Official KEAM formula
         for s in scores:
 
             count = np.sum(
@@ -143,7 +143,7 @@ if uploaded_file:
         }
 
     # ==================================================
-    # INTERPOLATION
+    # INTERPOLATION FUNCTION
     # ==================================================
     def interpolate_score(
         target_percentile,
@@ -156,14 +156,14 @@ if uploaded_file:
             target_percentile
         )
 
-        # Lower than minimum
+        # Below minimum
         if idx == 0:
 
             return float(
                 s_arr[0]
             )
 
-        # Greater than maximum
+        # Above maximum
         if idx >= len(p_arr):
 
             return float(
@@ -237,7 +237,7 @@ if uploaded_file:
         row_data = {
 
             "RollNo":
-                row.RollNo,
+                row.Roll_No,
 
             "Batch":
                 current_batch,
