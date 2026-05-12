@@ -16,9 +16,9 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file:
 
-    # ==================================================
+    # =========================================================
     # LOAD EXCEL
-    # ==================================================
+    # =========================================================
     df = pd.read_excel(uploaded_file)
 
     # Clean column names
@@ -27,9 +27,9 @@ if uploaded_file:
         for c in df.columns
     ]
 
-    # ==================================================
+    # =========================================================
     # REQUIRED COLUMNS
-    # ==================================================
+    # =========================================================
     required_cols = [
         "Roll_No",
         "MatheMatics",
@@ -45,10 +45,31 @@ if uploaded_file:
             st.error(f"Missing column: {col}")
             st.stop()
 
-    # ==================================================
-    # CALCULATE RAW SCORE
-    # ==================================================
-    # Raw score out of 600
+    # =========================================================
+    # CONVERT TO NUMERIC
+    # =========================================================
+    df["MatheMatics"] = pd.to_numeric(
+        df["MatheMatics"],
+        errors="coerce"
+    )
+
+    df["Physics"] = pd.to_numeric(
+        df["Physics"],
+        errors="coerce"
+    )
+
+    df["Chemistry"] = pd.to_numeric(
+        df["Chemistry"],
+        errors="coerce"
+    )
+
+    # Fill blanks
+    df = df.fillna(0)
+
+    # =========================================================
+    # RAW TOTAL
+    # =========================================================
+    # Total out of 600
     df["Raw_Total"] = (
         df["MatheMatics"] +
         df["Physics"] +
@@ -56,13 +77,14 @@ if uploaded_file:
     )
 
     # Convert to 300 scale
-    df["Score"] = (
-        df["Raw_Total"] / 2
+    df["Score"] = np.round(
+        df["Raw_Total"] / 2,
+        8
     )
 
-    # ==================================================
-    # EXACT KEAM PERCENTILE
-    # ==================================================
+    # =========================================================
+    # EXACT KEAM-LIKE PERCENTILE
+    # =========================================================
     percentile_frames = []
 
     for batch in df["Batch"].unique():
@@ -71,46 +93,37 @@ if uploaded_file:
             df["Batch"] == batch
         ].copy()
 
-        scores = (
-            temp["Score"]
-            .to_numpy(dtype=np.float64)
+        # Stable sorting
+        temp = temp.sort_values(
+            ["Score", "Roll_No"],
+            kind="mergesort"
+        ).reset_index(drop=True)
+
+        n = len(temp)
+
+        # Sequential rank position
+        temp["Rank_Pos"] = np.arange(
+            1,
+            n + 1
         )
 
-        n = len(scores)
-
-        percentiles = []
-
-        # Official KEAM formula
-        for s in scores:
-
-            # tolerance handling
-            count = np.sum(
-                scores <= (s + 1e-9)
-            )
-
-            p = (
-                count / n
-            ) * 100
-
-            percentiles.append(
-                round(p, 8)
-            )
-
-        temp["Percentile"] = (
-            percentiles
+        # Percentile
+        temp["Percentile"] = np.round(
+            (
+                temp["Rank_Pos"] / n
+            ) * 100,
+            8
         )
 
-        percentile_frames.append(
-            temp
-        )
+        percentile_frames.append(temp)
 
     df = pd.concat(
         percentile_frames
     )
 
-    # ==================================================
+    # =========================================================
     # SORT
-    # ==================================================
+    # =========================================================
     df = df.sort_values(
         ["Batch", "Percentile"]
     ).reset_index(drop=True)
@@ -119,9 +132,9 @@ if uploaded_file:
         df["Batch"].unique()
     )
 
-    # ==================================================
+    # =========================================================
     # PREPROCESS BATCHES
-    # ==================================================
+    # =========================================================
     batch_lookup = {}
 
     for batch in batches:
@@ -152,9 +165,9 @@ if uploaded_file:
                 )
         }
 
-    # ==================================================
+    # =========================================================
     # INTERPOLATION FUNCTION
-    # ==================================================
+    # =========================================================
     def interpolate_score(
         target_percentile,
         p_arr,
@@ -224,9 +237,9 @@ if uploaded_file:
             )
         )
 
-    # ==================================================
+    # =========================================================
     # NORMALIZATION
-    # ==================================================
+    # =========================================================
     output = []
 
     rows = list(
@@ -334,9 +347,9 @@ if uploaded_file:
                 i / total_rows
             )
 
-    # ==================================================
+    # =========================================================
     # FINAL OUTPUT
-    # ==================================================
+    # =========================================================
     out_df = pd.DataFrame(
         output
     )
@@ -376,9 +389,9 @@ if uploaded_file:
         final_cols
     ]
 
-    # ==================================================
+    # =========================================================
     # DISPLAY
-    # ==================================================
+    # =========================================================
     st.success(
         "Normalization Completed"
     )
@@ -388,9 +401,9 @@ if uploaded_file:
         use_container_width=True
     )
 
-    # ==================================================
+    # =========================================================
     # EXPORT EXCEL
-    # ==================================================
+    # =========================================================
     output_file = (
         "keam_normalized_output.xlsx"
     )
