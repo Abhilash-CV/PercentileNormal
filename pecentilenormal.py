@@ -55,10 +55,9 @@ if uploaded_file:
         df["Chemistry"]
     )
 
-    # Convert to scale of 300
-    df["Score"] = np.round(
-        df["Raw_Total"] / 2,
-        8
+    # Convert to 300 scale
+    df["Score"] = (
+        df["Raw_Total"] / 2
     )
 
     # ==================================================
@@ -72,24 +71,21 @@ if uploaded_file:
             df["Batch"] == batch
         ].copy()
 
-        # IMPORTANT:
-        # round scores to avoid floating precision issues
-        scores = np.round(
-            temp["Score"].to_numpy(),
-            8
+        scores = (
+            temp["Score"]
+            .to_numpy(dtype=np.float64)
         )
 
         n = len(scores)
 
         percentiles = []
 
-        # Official KEAM percentile formula
+        # Official KEAM formula
         for s in scores:
 
+            # tolerance handling
             count = np.sum(
-                np.round(scores, 8)
-                <=
-                round(s, 8)
+                scores <= (s + 1e-9)
             )
 
             p = (
@@ -142,19 +138,17 @@ if uploaded_file:
         batch_lookup[batch] = {
 
             "percentiles":
-                np.round(
-                    temp[
-                        "Percentile"
-                    ].to_numpy(),
-                    8
+                temp[
+                    "Percentile"
+                ].to_numpy(
+                    dtype=np.float64
                 ),
 
             "scores":
-                np.round(
-                    temp[
-                        "Score"
-                    ].to_numpy(),
-                    8
+                temp[
+                    "Score"
+                ].to_numpy(
+                    dtype=np.float64
                 )
         }
 
@@ -166,11 +160,6 @@ if uploaded_file:
         p_arr,
         s_arr
     ):
-
-        target_percentile = round(
-            target_percentile,
-            8
-        )
 
         idx = np.searchsorted(
             p_arr,
@@ -198,11 +187,15 @@ if uploaded_file:
         s2 = s_arr[idx]
 
         # Exact match
-        if round(p1, 8) == target_percentile:
+        if abs(
+            p1 - target_percentile
+        ) < 1e-9:
 
             return float(s1)
 
-        if round(p2, 8) == target_percentile:
+        if abs(
+            p2 - target_percentile
+        ) < 1e-9:
 
             return float(s2)
 
@@ -248,9 +241,8 @@ if uploaded_file:
 
     for i, row in enumerate(rows):
 
-        percentile = round(
-            row.Percentile,
-            8
+        percentile = float(
+            row.Percentile
         )
 
         current_batch = (
@@ -268,7 +260,10 @@ if uploaded_file:
                 current_batch,
 
             "Percentile":
-                percentile,
+                round(
+                    percentile,
+                    8
+                ),
 
             "Score":
                 round(
