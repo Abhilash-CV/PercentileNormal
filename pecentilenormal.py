@@ -48,16 +48,17 @@ if uploaded_file:
     # ==================================================
     # CALCULATE RAW SCORE
     # ==================================================
-    # Raw score out of 600
+    # Total raw score out of 600
     df["Raw_Total"] = (
         df["MatheMatics"] +
         df["Physics"] +
         df["Chemistry"]
     )
 
-    # Convert to 300 scale
-    df["Score"] = (
-        df["Raw_Total"] / 2
+    # Convert to scale of 300
+    df["Score"] = np.round(
+        df["Raw_Total"] / 2,
+        8
     )
 
     # ==================================================
@@ -70,43 +71,29 @@ if uploaded_file:
         temp = df[
             df["Batch"] == batch
         ].copy()
-        scores = np.array(
-            [
-                float(
-                    format(x, ".10f")
-                )
-                for x in temp["Score"]
-            ]
-        )
-        n = len(scores)
 
-        percentiles = []
+        # Sort by score
+        temp = temp.sort_values(
+            "Score"
+        ).reset_index(drop=True)
 
-        # Official KEAM formula
-        for s in scores:
+        n = len(temp)
 
-            # tolerance handling
-            count = np.sum(
-                np.round(scores, 10)
-                <=
-                round(s, 10)
-            )
-
-            p = (
-                count / n
-            ) * 100
-
-            percentiles.append(
-                round(p, 8)
-            )
-
-        temp["Percentile"] = (
-            percentiles
+        # KEAM-style position ranking
+        temp["Rank_Pos"] = np.arange(
+            1,
+            n + 1
         )
 
-        percentile_frames.append(
-            temp
+        # Percentile
+        temp["Percentile"] = np.round(
+            (
+                temp["Rank_Pos"] / n
+            ) * 100,
+            8
         )
+
+        percentile_frames.append(temp)
 
     df = pd.concat(
         percentile_frames
@@ -190,7 +177,7 @@ if uploaded_file:
         s1 = s_arr[idx - 1]
         s2 = s_arr[idx]
 
-        # Exact match
+        # Exact matches
         if abs(
             p1 - target_percentile
         ) < 1e-9:
