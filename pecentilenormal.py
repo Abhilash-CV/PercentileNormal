@@ -88,48 +88,38 @@ if uploaded_file:
     # =========================================================
     percentile_frames = []
 
-    for batch in df["Batch"].unique():
+   
 
+    for batch in df["Batch"].unique():
+    
         temp = df[
             df["Batch"] == batch
         ].copy()
-
-        scores = temp[
-            "Score"
-        ].to_numpy(
-            dtype=np.float64
+    
+        # stable order
+        temp = temp.sort_values(
+            ["Score", "Roll_No"],
+            kind="mergesort"
+        ).reset_index(drop=True)
+    
+        n = len(temp)
+    
+        # sequential ranks
+        temp["Rank_Pos"] = np.arange(
+            1,
+            n + 1
         )
-
-        n = len(scores)
-
-        percentiles = []
-
-        for s in scores:
-
-            # tolerance to avoid floating issues
-            count = np.sum(
-                scores <= (s + 1e-12)
-            )
-
-            p = (
-                count / n
-            ) * 100
-
-            percentiles.append(
-                round(p, 8)
-            )
-
-        temp["Percentile"] = (
-            percentiles
+    
+        temp["Percentile"] = np.round(
+            (
+                temp["Rank_Pos"] / n
+            ) * 100,
+            8
         )
+    
+        percentile_frames.append(temp)
 
-        percentile_frames.append(
-            temp
-        )
-
-    df = pd.concat(
-        percentile_frames
-    )
+df = pd.concat(percentile_frames)
 
     # =========================================================
     # SORT
