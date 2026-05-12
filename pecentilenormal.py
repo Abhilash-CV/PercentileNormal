@@ -119,7 +119,7 @@ if uploaded_file:
     
         percentile_frames.append(temp)
 
-df = pd.concat(percentile_frames)
+    df = pd.concat(percentile_frames)
 
     # =========================================================
     # SORT
