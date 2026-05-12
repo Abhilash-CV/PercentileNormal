@@ -70,12 +70,14 @@ if uploaded_file:
         temp = df[
             df["Batch"] == batch
         ].copy()
-
-        scores = (
-            temp["Score"]
-            .to_numpy(dtype=np.float64)
+        scores = np.array(
+            [
+                float(
+                    format(x, ".10f")
+                )
+                for x in temp["Score"]
+            ]
         )
-
         n = len(scores)
 
         percentiles = []
@@ -85,7 +87,9 @@ if uploaded_file:
 
             # tolerance handling
             count = np.sum(
-                scores <= (s + 1e-9)
+                np.round(scores, 10)
+                <=
+                round(s, 10)
             )
 
             p = (
