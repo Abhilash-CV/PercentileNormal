@@ -7,7 +7,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("KEAM 2026 Percentile + Normalization Calculator")
+st.title("KEAM Percentile + Normalization Calculation")
 
 uploaded_file = st.file_uploader(
     "Upload Excel File",
