@@ -61,7 +61,7 @@ if uploaded_file:
     )
 
     # ==================================================
-    # EXACT KEAM PERCENTILE
+    # KEAM PERCENTILE
     # ==================================================
     percentile_frames = []
 
@@ -80,7 +80,7 @@ if uploaded_file:
 
         percentiles = []
 
-        # Official KEAM formula
+        #  KEAM formula
         for s in scores:
 
             # tolerance handling
